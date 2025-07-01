@@ -244,7 +244,15 @@
                                           <div class="input-wrapper"><label class="block text-sm font-medium text-gray-700">目標利益</label><input type="number" id="d-targetProfit" class="simulator-input custom-input mt-1 block w-full" placeholder="500000"><span class="input-unit">円</span></div>
                                     </div>
                                     <div class="input-wrapper"><label class="block text-sm font-medium text-gray-700">平均顧客単価 (LTV)</label><input type="number" id="d-avgCustomerValue" class="simulator-input custom-input mt-1 block w-full" placeholder="10000"><span class="input-unit">円</span></div>
-                                    <div class="input-wrapper"><label class="block text-sm font-medium text-gray-700">商品原価・変動費</label><input type="number" id="d-cogs" class="simulator-input custom-input mt-1 block w-full" placeholder="4000"><span class="input-unit">円</span></div>
+                                    <div>
+                                        <label for="d-cost-type" class="block text-sm font-medium text-gray-700">原価の入力方法</label>
+                                        <select id="d-cost-type" class="simulator-input mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                                            <option value="cogs">商品原価・変動費 (円)</option>
+                                            <option value="margin">原価率 (%)</option>
+                                        </select>
+                                    </div>
+                                    <div id="d-cogs-wrapper" class="input-wrapper"><label class="block text-sm font-medium text-gray-700">商品原価・変動費</label><input type="number" id="d-cogs" class="simulator-input custom-input mt-1 block w-full" placeholder="4000"><span class="input-unit">円</span></div>
+                                    <div id="d-margin-wrapper" class="hidden input-wrapper"><label class="block text-sm font-medium text-gray-700">原価率 (%)</label><input type="number" id="d-margin" class="simulator-input custom-input mt-1 block w-full" placeholder="40"><span class="input-unit">%</span></div>
                                 </div>
 
                                 <div class="pt-6 border-t">
@@ -355,31 +363,62 @@
         <div id="tooltip-formula" class="formula"></div>
     </div>
 
-<script>
+<script type="module">
+    // NOTE: This is a simplified example for demonstration in a static HTML file.
+    // In a real application, you would use a backend service or a serverless function
+    // to securely handle the API key and make requests to the Gemini API.
+    // The API key is exposed here for simplicity of this example.
+    const API_KEY = "YOUR_API_KEY"; // Replace with your actual API key if running outside of a secure environment
+
+    async function callGeminiAPI(payload) {
+        // In a real deployment (like Netlify), you'd call your serverless function.
+        // For local testing, you might call the Google AI API directly.
+        const isLocal = window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+        const url = isLocal 
+            ? `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${API_KEY}`
+            : '/.netlify/functions/callGemini';
+
+        const headers = { 'Content-Type': 'application/json' };
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API error (${response.status}): ${errorText}`);
+        }
+        
+        return response.json();
+    }
+
+
 document.addEventListener('DOMContentLoaded', () => {
 
     const data = {
         caseStudies: [
-             // 1列目: フィットネス
-            { id: 'fitness-24h', title: 'フィットネス', subtitle: '24時間営業ジム', targetProfit: 600000, avgCustomerValue: 38400, cogs: 0, profitPerCv: 8000, targetRoi: 26.3, cvr: 3.5, cpc: 250, description: '駅近で便利な24時間営業フィットネスジム。最新マシン完備で、月額8,000円から利用可能。見学予約受付中。' },
-            { id: 'fitness-yoga', title: 'フィットネス', subtitle: '女性専用ホットヨガ', targetProfit: 450000, avgCustomerValue: 60000, cogs: 0, profitPerCv: 15000, targetRoi: 33.3, cvr: 2.5, cpc: 180, description: '初心者歓迎の女性専用ホットヨガスタジオ。デトックスとリラックス効果で心も体も美しく。体験レッスン受付中。' },
-            { id: 'fitness-online', title: 'フィットネス', subtitle: 'オンラインパーソナル', targetProfit: 400000, avgCustomerValue: 25000, cogs: 0, profitPerCv: 10000, targetRoi: 66.7, cvr: 2.0, cpc: 400, description: '自宅で受けられる本格的なオンラインパーソナルトレーニング。あなた専用のプログラムで理想の身体へ。無料カウンセリング実施中。' },
-            // 2列目: 学習塾
-            { id: 'tutor-elem', title: '学習塾', subtitle: '小学生向け集団指導', targetProfit: 500000, avgCustomerValue: 48000, cogs: 0, profitPerCv: 10000, targetRoi: 26.3, cvr: 1.5, cpc: 300, description: '地域密着型の小学生向け学習塾。わかるまで徹底指導で、勉強が楽しくなる。まずは資料請求から。' },
-            { id: 'tutor-univ', title: '学習塾', subtitle: '大学受験予備校', targetProfit: 1350000, avgCustomerValue: 150000, cogs: 0, profitPerCv: 45000, targetRoi: 42.9, cvr: 2.5, cpc: 550, description: '難関大学を目指す高校生のための大学受験予備校。プロ講師陣による質の高い授業と手厚いサポート。個別相談会を予約。' },
-            { id: 'tutor-prog', title: '学習塾', subtitle: 'プログラミングスクール', targetProfit: 1000000, avgCustomerValue: 60000, cogs: 0, profitPerCv: 20000, targetRoi: 50, cvr: 3.0, cpc: 700, description: '未経験からITエンジニアへ。転職保証付きの社会人向けプログラミングスクール。まずは無料カウンセリングへ。' },
-            // 3列目: 買取サービス
-            { id: 'buyback-brand', title: '買取サービス', subtitle: 'ブランド品宅配買取', targetProfit: 400000, avgCustomerValue: 9000, cogs: 0, profitPerCv: 4000, targetRoi: 80, cvr: 5.0, cpc: 400, description: '送料無料、手数料無料のブランド品宅配買取サービス。箱に詰めて送るだけで簡単査定。宅配キットを申し込む。' },
-            { id: 'buyback-car', title: '買取サービス', subtitle: '中古車一括査定', targetProfit: 1000000, avgCustomerValue: 5000, cogs: 0, profitPerCv: 2000, targetRoi: 66.7, cvr: 8.0, cpc: 600, description: '愛車の最高額がわかる！複数の買取業者に一括で査定を依頼できる無料サービス。' },
-            { id: 'buyback-book', title: '買取サービス', subtitle: '古本・ゲーム出張買取', targetProfit: 160000, avgCustomerValue: 3600, cogs: 0, profitPerCv: 1600, targetRoi: 80, cvr: 4.0, cpc: 150, description: '本・漫画・ゲーム、30点から無料で出張買取。玄関先で査定、その場で現金払い。' },
-            // 4列目: 不動産
-            { id: 'real-estate', title: '不動産', subtitle: '賃貸仲介（問い合わせ）', targetProfit: 600000, avgCustomerValue: 30000, cogs: 0, profitPerCv: 15000, targetRoi: 100, cvr: 2.5, cpc: 300, description: '都心エリアの単身者向け賃貸物件を専門に扱う不動産仲介サービス。オンライン内見にも対応。' },
-            { id: 'real-estate-invest', title: '不動産', subtitle: '投資用物件（資料請求）', targetProfit: 2000000, avgCustomerValue: 10000, cogs: 0, profitPerCv: 5000, targetRoi: 100, cvr: 1.0, cpc: 800, description: '将来のための資産形成。都心の中古マンションを中心とした投資用不動産のご提案。まずは無料の資料請求から。' },
-            { id: 'real-estate-new', title: '不動産', subtitle: '新築戸建て（見学予約）', targetProfit: 1500000, avgCustomerValue: 50000, cogs: 0, profitPerCv: 25000, targetRoi: 100, cvr: 1.5, cpc: 650, description: '家族の夢を叶える、デザイン性の高い新築戸建て。週末の見学会を予約して、理想の住まいを体感してください。' },
-            // 5列目以降: その他
-            { id: 'b2c-ec', title: 'B2C Eコマース', subtitle: 'ハンドメイドアクセサリー', targetProfit: 150000, avgCustomerValue: 5000, cogs: 1000, profitPerCv: 2000, targetRoi: 100, cvr: 1.0, cpc: 120, description: '20代女性向けの、高品質な天然石を使ったハンドメイドアクセサリーのオンラインストア。' },
-            { id: 'b2b-saas', title: 'B2B SaaS', subtitle: 'プロジェクト管理ソフト', targetProfit: 1080000, avgCustomerValue: 60000, cogs: 0, profitPerCv: 24000, targetRoas: 250, targetRoi: 150, cvr: 2.0, cpc: 600, description: '中小企業・スタートアップ向けの直感的なプロジェクト管理SaaSツール。タスク管理、ガントチャート、チームコラボレーション機能を提供。' },
-            { id: 'high-ticket', title: '高価格帯B2C', subtitle: 'オンライン英会話', targetProfit: 1734200, avgCustomerValue: 24000, cogs: 0, profitPerCv: 12333, targetRoi: 105.7, cvr: 3.0, cpc: 350, description: 'ビジネスパーソン向けのマンツーマンオンライン英会話スクール。ネイティブ講師による高品質なレッスンが特徴。' }
+            // 数値を再計算し、整合性を確保
+            // Logic: limitCpa = avgCustomerValue - cogs. profitPerCvを正とし、targetCpa = limitCpa - profitPerCv.
+            // targetRoi と targetRoas は targetCpa から逆算して整合性を取る
+            { id: 'fitness-24h', title: 'フィットネス', subtitle: '24時間営業ジム', targetProfit: 600000, avgCustomerValue: 38400, cogs: 10000, profitPerCv: 8000, cvr: 3.5, cpc: 250, description: '駅近で便利な24時間営業フィットネスジム。最新マシン完備で、月額8,000円から利用可能。見学予約受付中。' },
+            { id: 'fitness-yoga', title: 'フィットネス', subtitle: '女性専用ホットヨガ', targetProfit: 450000, avgCustomerValue: 60000, cogs: 20000, profitPerCv: 15000, cvr: 2.5, cpc: 180, description: '初心者歓迎の女性専用ホットヨガスタジオ。デトックスとリラックス効果で心も体も美しく。体験レッスン受付中。' },
+            { id: 'fitness-online', title: 'フィットネス', subtitle: 'オンラインパーソナル', targetProfit: 400000, avgCustomerValue: 25000, cogs: 5000, profitPerCv: 10000, cvr: 2.0, cpc: 400, description: '自宅で受けられる本格的なオンラインパーソナルトレーニング。あなた専用のプログラムで理想の身体へ。無料カウンセリング実施中。' },
+            { id: 'tutor-elem', title: '学習塾', subtitle: '小学生向け集団指導', targetProfit: 500000, avgCustomerValue: 48000, cogs: 20000, profitPerCv: 10000, cvr: 1.5, cpc: 300, description: '地域密着型の小学生向け学習塾。わかるまで徹底指導で、勉強が楽しくなる。まずは資料請求から。' },
+            { id: 'tutor-univ', title: '学習塾', subtitle: '大学受験予備校', targetProfit: 1350000, avgCustomerValue: 150000, cogs: 60000, profitPerCv: 45000, cvr: 2.5, cpc: 550, description: '難関大学を目指す高校生のための大学受験予備校。プロ講師陣による質の高い授業と手厚いサポート。個別相談会を予約。' },
+            { id: 'tutor-prog', title: '学習塾', subtitle: 'プログラミングスクール', targetProfit: 1000000, avgCustomerValue: 60000, cogs: 10000, profitPerCv: 20000, cvr: 3.0, cpc: 700, description: '未経験からITエンジニアへ。転職保証付きの社会人向けプログラミングスクール。まずは無料カウンセリングへ。' },
+            { id: 'buyback-brand', title: '買取サービス', subtitle: 'ブランド品宅配買取', targetProfit: 400000, avgCustomerValue: 9000, cogs: 0, profitPerCv: 4000, cvr: 5.0, cpc: 400, description: '送料無料、手数料無料のブランド品宅配買取サービス。箱に詰めて送るだけで簡単査定。宅配キットを申し込む。' },
+            { id: 'buyback-car', title: '買取サービス', subtitle: '中古車一括査定', targetProfit: 1000000, avgCustomerValue: 5000, cogs: 0, profitPerCv: 2000, cvr: 8.0, cpc: 600, description: '愛車の最高額がわかる！複数の買取業者に一括で査定を依頼できる無料サービス。' },
+            { id: 'buyback-book', title: '買取サービス', subtitle: '古本・ゲーム出張買取', targetProfit: 160000, avgCustomerValue: 3600, cogs: 0, profitPerCv: 1600, cvr: 4.0, cpc: 150, description: '本・漫画・ゲーム、30点から無料で出張買取。玄関先で査定、その場で現金払い。' },
+            { id: 'real-estate', title: '不動産', subtitle: '賃貸仲介（問い合わせ）', targetProfit: 600000, avgCustomerValue: 30000, cogs: 0, profitPerCv: 15000, cvr: 2.5, cpc: 300, description: '都心エリアの単身者向け賃貸物件を専門に扱う不動産仲介サービス。オンライン内見にも対応。' },
+            { id: 'real-estate-invest', title: '不動産', subtitle: '投資用物件（資料請求）', targetProfit: 2000000, avgCustomerValue: 10000, cogs: 0, profitPerCv: 5000, cvr: 1.0, cpc: 800, description: '将来のための資産形成。都心の中古マンションを中心とした投資用不動産のご提案。まずは無料の資料請求から。' },
+            { id: 'real-estate-new', title: '不動産', subtitle: '新築戸建て（見学予約）', targetProfit: 1500000, avgCustomerValue: 50000, cogs: 0, profitPerCv: 25000, cvr: 1.5, cpc: 650, description: '家族の夢を叶える、デザイン性の高い新築戸建て。週末の見学会を予約して、理想の住まいを体感してください。' },
+            { id: 'b2c-ec', title: 'B2C Eコマース', subtitle: 'ハンドメイドアクセサリー', targetProfit: 150000, avgCustomerValue: 5000, cogs: 1000, profitPerCv: 2000, cvr: 1.0, cpc: 120, description: '20代女性向けの、高品質な天然石を使ったハンドメイドアクセサリーのオンラインストア。' },
+            // B2B SaaSの値を修正。targetRoas: 250% -> targetCpa: 24000. limitCpa: 60000. profitPerCv = 60000 - 24000 = 36000
+            { id: 'b2b-saas', title: 'B2B SaaS', subtitle: 'プロジェクト管理ソフト', targetProfit: 1080000, avgCustomerValue: 60000, cogs: 0, profitPerCv: 36000, targetRoas: 250, cvr: 2.0, cpc: 600, description: '中小企業・スタートアップ向けの直感的なプロジェクト管理SaaSツール。タスク管理、ガントチャート、チームコラボレーション機能を提供。' },
+             // オンライン英会話の値を修正。limitCpa: 24000, profitPerCv: 12000 -> targetCpa: 12000.
+            { id: 'high-ticket', title: '高価格帯B2C', subtitle: 'オンライン英会話', targetProfit: 1800000, avgCustomerValue: 24000, cogs: 0, profitPerCv: 12000, cvr: 3.0, cpc: 350, description: 'ビジネスパーソン向けのマンツーマンオンライン英会話スクール。ネイティブ講師による高品質なレッスンが特徴。' }
         ],
         benchmarks: {
             googleSearch: { 
@@ -497,16 +536,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return `<span class="info-icon ml-1 inline-block align-middle" data-metric="${metric}">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16">
                         <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
-                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.316-.68l.738-3.468a.499.499 0 0 1 .47-.323c.09-.002.19.022.26.077a.45.45 0 0 1 .15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984H7.284l.29-.071a.499.499 0 0 1 .316-.68l-.738-3.468a.499.499 0 0 1-.47-.323c-.09.002-.19-.022-.26-.077a.45.45 0 0 1-.15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H7.284l-.29.071a.499.499 0 0 1-.316.68l.738 3.468a.499.499 0 0 1 .47.323c.09-.002.19.022.26.077a.45.45 0 0 1 .15.318l.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984H8.93zM8 4.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
+                        <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.064.293.006.399.287.47l.45.082.082-.38-.29-.071a.499.499 0 0 1-.316-.68l.738-3.468a.499.499 0 0 1 .47-.323c.09-.002.19.022.26.077a.45.45 0 0 1 .15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984H7.284l.29-.071a.499.499 0 0 1 .316-.68l-.738-3.468a.499.499 0 0 1-.47-.323c-.09.002-.19-.022-.26-.077a.45.45 0 0 1-.15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H4.93c-.294 0-.469-.176-.469-.469a.45.45 0 0 1 .15-.318l.305-.984H7.284l-.29.071a.499.499 0 0 1-.316.68l.738 3.468a.499.499 0 0 1 .47.323c.09-.002.19.022.26.077a.45.45 0 0 1 .15.318l.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984h.898c.294 0 .469.176.469.469a.45.45 0 0 1-.15.318l-.305.984H8.93zM8 4.5a1 1 0 1 1 0-2 1 1 0 0 1 0 2z"/>
                     </svg>
                 </span>`;
     }
 
     function getCogs(prefix) {
         const costTypeSelect = document.getElementById(`${prefix}-cost-type`);
-        if (!costTypeSelect) {
-            return parseFloat(document.getElementById(`${prefix}-cogs`).value) || 0;
-        }
+        if (!costTypeSelect) return 0; // fallback if element doesn't exist
         const costType = costTypeSelect.value;
         const avgCustomerValue = parseFloat(document.getElementById(`${prefix}-avgCustomerValue`).value) || 0;
         if (costType === 'cogs') {
@@ -667,7 +704,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function calculateModeD() {
         const avgCustomerValue = parseFloat(document.getElementById('d-avgCustomerValue').value) || 0;
-        const cogs = parseFloat(document.getElementById('d-cogs').value) || 0;
+        const cogs = getCogs('d');
         const cvr = parseFloat(document.getElementById('common-cvr').value) || 0;
         const cpc = parseFloat(document.getElementById('common-cpc').value) || 0;
         const estimatedCpa = cvr > 0 ? cpc / (cvr / 100) : 0;
@@ -866,12 +903,15 @@ document.addEventListener('DOMContentLoaded', () => {
         calculateAll();
     });
 
-    ['a', 'b', 'c'].forEach(prefix => {
-        document.getElementById(`${prefix}-cost-type`).addEventListener('change', (e) => {
-            document.getElementById(`${prefix}-cogs-wrapper`).classList.toggle('hidden', e.target.value !== 'cogs');
-            document.getElementById(`${prefix}-margin-wrapper`).classList.toggle('hidden', e.target.value !== 'margin');
-            calculateAll();
-        });
+    ['a', 'b', 'c', 'd'].forEach(prefix => {
+        const costTypeSelect = document.getElementById(`${prefix}-cost-type`);
+        if (costTypeSelect) {
+            costTypeSelect.addEventListener('change', (e) => {
+                document.getElementById(`${prefix}-cogs-wrapper`).classList.toggle('hidden', e.target.value !== 'cogs');
+                document.getElementById(`${prefix}-margin-wrapper`).classList.toggle('hidden', e.target.value !== 'margin');
+                calculateAll();
+            });
+        }
     });
 
     function showSection(sectionId) {
@@ -888,63 +928,60 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadCaseStudy(caseId) {
         const cs = data.caseStudies.find(c => c.id === caseId);
         if (cs) {
-            let realisticCogs = cs.cogs;
-            if (!realisticCogs || realisticCogs <= 0) {
-                const estimatedLimitCpa = (cs.profitPerCv || 0) * 2;
-                realisticCogs = (cs.avgCustomerValue || 0) - estimatedLimitCpa;
-                if (realisticCogs < 0) {
-                    realisticCogs = 0;
-                }
-            }
-            realisticCogs = Math.round(realisticCogs);
-
-            const limitCpa = (cs.avgCustomerValue || 0) - realisticCogs;
-            let targetCpa;
-
-            if (cs.profitPerCv) {
-                targetCpa = limitCpa - cs.profitPerCv;
-            } else if (cs.targetRoas) {
-                targetCpa = (cs.avgCustomerValue || 0) / (cs.targetRoas / 100);
-            } else if (cs.targetRoi) {
-                targetCpa = limitCpa / ((cs.targetRoi / 100) + 1);
-            } else {
-                targetCpa = limitCpa;
-            }
-
-            const calculatedProfitPerCv = limitCpa - targetCpa;
-            const calculatedRoas = targetCpa > 0 ? ((cs.avgCustomerValue || 0) / targetCpa) * 100 : 0;
-            const calculatedRoi = targetCpa > 0 ? ((limitCpa - targetCpa) / targetCpa) * 100 : 0;
+            const avgCustomerValue = cs.avgCustomerValue || 0;
+            const cogs = cs.cogs || 0;
+            const profitPerCv = cs.profitPerCv || 0;
+            const limitCpa = avgCustomerValue - cogs;
             
-            document.getElementById('a-profitPerCv').value = Math.round(calculatedProfitPerCv);
-            document.getElementById('a-targetRoas').value = calculatedRoas.toFixed(1);
-            document.getElementById('a-targetRoi').value = calculatedRoi.toFixed(1);
-
+            // どの指定方法でも辻褄が合うように逆算してセットする
+            const targetCpaFromProfit = limitCpa - profitPerCv;
+            const targetRoas = targetCpaFromProfit > 0 ? (avgCustomerValue / targetCpaFromProfit) * 100 : 0;
+            const targetRoi = targetCpaFromProfit > 0 ? ((limitCpa - targetCpaFromProfit) / targetCpaFromProfit) * 100 : 0;
+            
+            // モードA
             document.getElementById('a-targetProfit').value = cs.targetProfit || '';
-            document.getElementById('a-avgCustomerValue').value = cs.avgCustomerValue || '';
-            document.getElementById('a-cogs').value = realisticCogs;
-            
+            document.getElementById('a-avgCustomerValue').value = avgCustomerValue;
+            document.getElementById('a-cost-type').value = 'cogs';
+            document.getElementById('a-cogs').value = cogs;
+            document.getElementById('a-cogs-wrapper').classList.remove('hidden');
+            document.getElementById('a-margin-wrapper').classList.add('hidden');
+            document.getElementById('a-profitPerCv').value = profitPerCv;
+            document.getElementById('a-targetRoas').value = targetRoas.toFixed(1);
+            document.getElementById('a-targetRoi').value = targetRoi.toFixed(1);
             document.getElementById('a-profit-btn').click();
 
+            // 共通
             document.getElementById('common-cvr').value = cs.cvr || '';
             document.getElementById('common-cpc').value = cs.cpc || '';
             productDescriptionInput.value = cs.description || '';
 
-            const requiredCvForB = (cs.profitPerCv > 0 && cs.targetProfit > 0) ? Math.ceil(cs.targetProfit / cs.profitPerCv) : 0;
-            const targetSales = requiredCvForB * cs.avgCustomerValue;
+            // モードB
+            const requiredCvForB = (profitPerCv > 0 && cs.targetProfit > 0) ? Math.ceil(cs.targetProfit / profitPerCv) : 0;
+            const targetSales = requiredCvForB * avgCustomerValue;
             document.getElementById('b-targetSales').value = Math.round(targetSales);
-            document.getElementById('b-avgCustomerValue').value = cs.avgCustomerValue;
-            document.getElementById('b-cogs').value = realisticCogs;
-            
+            document.getElementById('b-avgCustomerValue').value = avgCustomerValue;
+            document.getElementById('b-cost-type').value = 'cogs';
+            document.getElementById('b-cogs').value = cogs;
+            document.getElementById('b-cogs-wrapper').classList.remove('hidden');
+            document.getElementById('b-margin-wrapper').classList.add('hidden');
+
+            // モードC
             const estimatedCpaForC = cs.cvr > 0 ? cs.cpc / (cs.cvr / 100) : 0;
             const requiredBudgetForC = requiredCvForB * estimatedCpaForC;
             document.getElementById('c-availableBudget').value = Math.round(requiredBudgetForC);
-            document.getElementById('c-avgCustomerValue').value = cs.avgCustomerValue;
-            document.getElementById('c-cogs').value = realisticCogs;
-            
-            document.getElementById('d-avgCustomerValue').value = cs.avgCustomerValue;
-            document.getElementById('d-cogs').value = realisticCogs;
+            document.getElementById('c-avgCustomerValue').value = avgCustomerValue;
+            document.getElementById('c-cost-type').value = 'cogs';
+            document.getElementById('c-cogs').value = cogs;
+            document.getElementById('c-cogs-wrapper').classList.remove('hidden');
+            document.getElementById('c-margin-wrapper').classList.add('hidden');
+
+            // モードD
+            document.getElementById('d-avgCustomerValue').value = avgCustomerValue;
+            document.getElementById('d-cost-type').value = 'cogs';
+            document.getElementById('d-cogs').value = cogs;
+            document.getElementById('d-cogs-wrapper').classList.remove('hidden');
+            document.getElementById('d-margin-wrapper').classList.add('hidden');
             document.getElementById('d-targetCv').value = requiredCvForB;
-            const targetCpaFromProfit = (cs.avgCustomerValue - realisticCogs) - cs.profitPerCv;
             document.getElementById('d-targetCpa').value = Math.round(targetCpaFromProfit);
             document.getElementById('d-targetProfit').value = cs.targetProfit || '';
 
@@ -953,6 +990,7 @@ document.addEventListener('DOMContentLoaded', () => {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     }
+
 
     function populateCaseStudies() {
         const container = document.getElementById('caseStudiesContainer');
@@ -1065,16 +1103,7 @@ JSON形式で、'ads'というキーを持つ配列として出力してくだ�
         };
 
         try {
-            const response = await fetch('/.netlify/functions/callGemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API error (${response.status}): ${errorText}`);
-            }
-            const result = await response.json();
+            const result = await callGeminiAPI(payload);
             if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
                 const resultText = result.candidates[0].content.parts[0].text;
                 const parsedResult = JSON.parse(resultText);
@@ -1096,43 +1125,76 @@ JSON形式で、'ads'というキーを持つ配列として出力してくだ�
         showLoading("ターゲティング案を生成中...");
         
         let prompt = `あなたは経験豊富なマーケティングストラテジストです。
-以下の情報を基に、デジタル広告キャンペーンにおける具体的なターゲティング案を提案してください。
+以下の情報に基づき、デジタル広告キャンペーンにおける具体的なターゲティング案を提案してください。
+
+# 指示
+- 必ず指定されたJSON形式で出力してください。
+- ペルソナは最低2つ作成してください。
 
 # 提供情報`;
 
         if (productDescription) { prompt += `\n## 商品・サービス概要\n${productDescription}`; }
         if (adUrl) { prompt += `\n## 参考URL\n${adUrl}`; }
         
-        prompt += `\n\n# 提案内容
-- 推奨する広告プラットフォーム（Google, Meta, X, TikTokなど）
-- ターゲット顧客層のペルソナ（年齢、性別、職業、興味・関心など）
-- 具体的なターゲティング設定の例（キーワード、興味関心カテゴリなど）
-
-上記の項目について、Markdown形式で、見出しやリストを使って分かりやすく解説してください。`;
-        
-        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+        const payload = {
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: "OBJECT",
+                    properties: {
+                        recommended_platforms: { type: "ARRAY", items: { type: "STRING" } },
+                        personas: {
+                            type: "ARRAY",
+                            items: {
+                                type: "OBJECT",
+                                properties: {
+                                    name: { type: "STRING" },
+                                    details: {
+                                        type: "OBJECT",
+                                        properties: {
+                                            "年齢": { type: "STRING" },
+                                            "性別": { type: "STRING" },
+                                            "職業": { type: "STRING" },
+                                            "興味・関心": { type: "STRING" },
+                                            "課題": { type: "STRING" }
+                                        },
+                                        required: ["年齢", "性別", "職業", "興味・関心", "課題"]
+                                    }
+                                },
+                                required: ["name", "details"]
+                            }
+                        },
+                        targeting_examples: {
+                            type: "OBJECT",
+                            properties: {
+                                "Google検索広告": {
+                                    type: "OBJECT",
+                                    properties: { "推奨キーワード": { type: "ARRAY", items: { type: "STRING" } } }
+                                },
+                                "Meta広告": {
+                                    type: "OBJECT",
+                                    properties: { "推奨興味関心カテゴリ": { type: "ARRAY", items: { type: "STRING" } } }
+                                }
+                            }
+                        }
+                    },
+                    required: ["recommended_platforms", "personas", "targeting_examples"]
+                }
+            }
+        };
 
         try {
-            const response = await fetch('/.netlify/functions/callGemini', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(`API error (${response.status}): ${errorText}`);
-            }
-            
-            const result = await response.json();
+            const result = await callGeminiAPI(payload);
             if (result.candidates && result.candidates[0]?.content?.parts?.[0]) {
-                displayTargetingIdeas(result.candidates[0].content.parts[0].text);
+                const parsedResult = JSON.parse(result.candidates[0].content.parts[0].text);
+                displayTargetingIdeas(parsedResult);
             } else {
                 throw new Error("予期せぬAPIレスポンス形式です。");
             }
-
         } catch (error) {
             showError(error.message);
+            console.error(error);
         }
     }
 
@@ -1151,9 +1213,57 @@ JSON形式で、'ads'というキーを持つ配列として出力してくだ�
         aiResultContainer.innerHTML = html + '</div>';
     }
 
-    function displayTargetingIdeas(ideas) {
-        aiResultContainer.innerHTML = `<h3 class="text-lg font-semibold text-teal-800 mb-4 text-center">AIが生成したターゲティング案</h3><div class="bg-gray-50 border border-gray-200 rounded-lg p-6 prose max-w-none">${ideas.replace(/\n/g, '<br>')}</div>`;
+    function displayTargetingIdeas(data) {
+        if (!data) {
+            showError("ターゲティング案を生成できませんでした。");
+            return;
+        }
+
+        let html = '<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-6">';
+        html += '<h3 class="text-xl font-bold text-teal-800 text-center">AIが生成したターゲティング案</h3>';
+
+        // 推奨プラットフォーム
+        if (data.recommended_platforms && data.recommended_platforms.length > 0) {
+            html += `<div><h4 class="text-lg font-semibold text-gray-800 mb-2 border-b pb-1">推奨する広告プラットフォーム</h4><div class="flex flex-wrap gap-2">${data.recommended_platforms.map(p => `<span class="bg-teal-100 text-teal-800 text-sm font-medium px-3 py-1 rounded-full">${p}</span>`).join('')}</div></div>`;
+        }
+
+        // ペルソナ
+        if (data.personas && data.personas.length > 0) {
+            html += '<div><h4 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">ターゲット顧客層のペルソナ</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+            data.personas.forEach(persona => {
+                html += '<div class="bg-white p-4 rounded-lg border">';
+                html += `<h5 class="font-bold text-md text-teal-700">${persona.name}</h5>`;
+                html += '<ul class="mt-2 space-y-1 text-sm text-gray-700">';
+                for (const [key, value] of Object.entries(persona.details)) {
+                    html += `<li><strong class="font-medium">${key}:</strong> ${value}</li>`;
+                }
+                html += '</ul></div>';
+            });
+            html += '</div></div>';
+        }
+
+        // ターゲティング例
+        if (data.targeting_examples) {
+            html += '<div><h4 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">具体的なターゲティング設定の例</h4><div class="space-y-4">';
+            for (const [platform, examples] of Object.entries(data.targeting_examples)) {
+                 if (examples) {
+                    html += `<div class="bg-white p-4 rounded-lg border"><h5 class="font-bold text-md mb-2 text-gray-800">${platform}</h5>`;
+                    for (const [key, values] of Object.entries(examples)) {
+                         if (values && values.length > 0){
+                            html += `<p class="text-sm font-semibold text-teal-700">${key}:</p>`;
+                            html += `<div class="flex flex-wrap gap-2 mt-1">${values.map(v => `<span class="bg-gray-200 text-gray-800 text-xs px-2 py-1 rounded">${v}</span>`).join('')}</div>`;
+                         }
+                    }
+                    html += '</div>';
+                }
+            }
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        aiResultContainer.innerHTML = html;
     }
+
 
     generateCopyBtn.addEventListener('click', () => handleAIGeneration('copy'));
     generateTargetingBtn.addEventListener('click', () => handleAIGeneration('targeting'));
