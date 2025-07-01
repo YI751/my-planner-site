@@ -172,6 +172,7 @@
                     
                     <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
                         
+                        <!-- Left Column: Inputs -->
                         <div class="lg:col-span-3 space-y-8">
                             <div class="space-y-6">
                                 <div id="mode-A-inputs" class="input-group space-y-6">
@@ -258,6 +259,7 @@
                             </div>
                         </div>
                         
+                        <!-- Right Column: Results -->
                         <div class="lg:col-span-2">
                             <div class="bg-teal-50/50 p-6 rounded-lg space-y-4 sticky top-8">
                                 <h3 id="results-title" class="text-lg font-semibold text-center text-teal-800">シミュレーション結果</h3>
@@ -501,7 +503,6 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `).join('');
 
-        // Handle the full-width item separately and append it after the grid.
         if(fullWidthItem) {
             html += `<div class="bg-white p-3 rounded-md shadow-sm text-center mt-4 col-span-2">
                 <div class="text-sm text-gray-500 flex items-center justify-center">
@@ -1096,7 +1097,7 @@ JSON形式で、'ads'というキーを持つ配列として出力してくだ�
     }
     
     async function generateTargetingIdeas(productDescription, adUrl) {
-        showLoading("ターゲティング案を生成中...");
+        showLoading("ターゲティング案の生成リクエストを受け付けました");
         
         let prompt = `あなたは経験豊富なマーケティングストラテジストです。
 以下の情報を基に、デジタル広告キャンペーンにおける具体的なターゲティング案を提案してください。
@@ -1115,9 +1116,29 @@ JSON形式で、'ads'というキーを持つ配列として出力してくだ�
 - ターゲット顧客層のペルソナ（年齢、性別、職業、興味・関心など）
 - 具体的なターゲティング設定の例（キーワード、興味関心カテゴリなど）
 
-上記の項目について、分かりやすく解説してください。`;
-        const resultText = await callGeminiAPI({ contents: [{ role: "user", parts: [{ text: prompt }] }] });
-        if (resultText) displayTargetingIdeas(resultText);
+上記の項目について、Markdown形式で、見出しやリストを使って分かりやすく解説してください。`;
+        
+        const payload = { contents: [{ role: "user", parts: [{ text: prompt }] }] };
+
+        try {
+            const response = await fetch('/.netlify/functions/callGemini', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error(`リクエスト受付エラー: ${response.statusText}`);
+            }
+            
+            aiResultContainer.innerHTML = `<div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg" role="alert">
+                <strong class="font-bold">AIがターゲティング案を生成中です。</strong>
+                <span class="block sm:inline">結果は数分以内に、Netlifyの管理画面にある「Functions」ログに出力されます。</span>
+            </div>`;
+
+        } catch (error) {
+            showError(error.message);
+        }
     }
 
     function displayAdCopy(ads) {
