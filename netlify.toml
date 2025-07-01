@@ -1,0 +1,15 @@
+# Netlifyのビルド設定
+[build]
+  # 公開するフォルダは、このファイルがあるルートディレクトリです
+  publish = "."
+  # 関数ファイルが格納されているディレクトリを指定します
+  functions = "netlify/functions"
+
+# Netlifyの関数に関する設定
+[functions]
+  node_bundler = "esbuild"
+  # 個別の関数の設定
+  [functions."*"]
+    node_version = 20
+    # ★★★ 関数のタイムアウトを60秒に延長します ★★★
+    timeout = 60
