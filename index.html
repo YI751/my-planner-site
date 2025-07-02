@@ -604,7 +604,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const resultsData = [
             { label: '限界CPA', value: formatCurrency(Math.max(0, limitCpa)), color: 'text-red-600', metric: 'limit-cpa' },
-            { label: '目標CPA', value: isNaN(targetCpa) ? '---' : formatCurrency(Math.max(0, targetCpa)), color: 'text-green-600', metric: 'target-cpa' },
+            { label: '目標CPA', value: !isFinite(targetCpa) ? formatCurrency(0) : formatCurrency(Math.max(0, targetCpa)), color: 'text-green-600', metric: 'target-cpa' },
             { label: '推定CPA', value: formatCurrency(estimatedCpa), color: 'text-yellow-600', metric: 'estimated-cpa' },
             { label: '必要CV数', value: `${formatNumber(requiredCv)}件`, color: 'text-blue-600', metric: 'required-cv' },
             { label: '必要広告予算', value: formatCurrency(requiredBudget), color: 'text-teal-600', metric: 'required-budget' },
