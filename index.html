@@ -1087,15 +1087,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     async function generateTargetingIdeas(productDescription, adUrl) {
-        showLoading("ターゲティング案を生成中...");
+        showLoading("ターゲティング戦略を生成中...");
         
         let prompt = `あなたは経験豊富なマーケティングストラテジストです。
-以下の情報に基づき、デジタル広告キャンペーンにおける具体的なターゲティング案を提案してください。
+以下の情報に基づき、デジタル広告キャンペーンのターゲティング戦略を提案してください。
 
 # 指示
 - 必ず指定されたJSON形式で出力してください。
-- ペルソナは最低2つ作成してください。
-- 各ターゲティング例は、可能な範囲で提案してください。
+- 各項目は、簡潔かつ戦略的な要点に絞って記述してください。
+- ペルソナは2つ作成してください。
 
 # 提供情報`;
 
@@ -1109,47 +1109,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 responseSchema: {
                     type: "OBJECT",
                     properties: {
-                        recommended_platforms: { type: "ARRAY", items: { type: "STRING" } },
-                        personas: {
+                        overall_strategy: { type: "STRING", description: "キャンペーン全体の基本戦略を1〜2文で要約" },
+                        primary_persona: {
+                            type: "OBJECT",
+                            description: "最も優先すべきメインターゲット",
+                            properties: {
+                                profile: { type: "STRING", description: "ペルソナ像を一言で表現" },
+                                pains_and_needs: { type: "ARRAY", description: "抱える悩みやニーズの箇条書き(2-3点)", items: { type: "STRING" } },
+                                appeal_keywords: { type: "ARRAY", description: "心に響く訴求キーワードの箇条書き(2-3点)", items: { type: "STRING" } }
+                            },
+                             required: ["profile", "pains_and_needs", "appeal_keywords"]
+                        },
+                        secondary_persona: {
+                            type: "OBJECT",
+                            description: "次に狙うべきサブターゲット",
+                            properties: {
+                                profile: { type: "STRING", description: "ペルソナ像を一言で表現" },
+                                pains_and_needs: { type: "ARRAY", description: "抱える悩みやニーズの箇条書き(2-3点)", items: { type: "STRING" } },
+                                appeal_keywords: { type: "ARRAY", description: "心に響く訴求キーワードの箇条書き(2-3点)", items: { type: "STRING" } }
+                            },
+                             required: ["profile", "pains_and_needs", "appeal_keywords"]
+                        },
+                        platform_strategy: {
                             type: "ARRAY",
+                            description: "推奨プラットフォームとその戦略的理由(2つまで)",
                             items: {
                                 type: "OBJECT",
                                 properties: {
-                                    name: { type: "STRING" },
-                                    details: {
-                                        type: "OBJECT",
-                                        properties: {
-                                            "年齢": { type: "STRING" }, "性別": { type: "STRING" }, "職業": { type: "STRING" },
-                                            "興味・関心": { type: "STRING" }, "課題": { type: "STRING" }
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        targeting_examples: {
-                            type: "OBJECT",
-                            properties: {
-                                "Google検索広告": {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "推奨キーワード": { type: "ARRAY", items: { type: "STRING" } },
-                                        "推奨除外キーワード": { type: "ARRAY", items: { type: "STRING" } }
-                                    }
+                                    platform_name: { type: "STRING" },
+                                    strategic_reason: { type: "STRING", description: "なぜそのプラットフォームを選ぶべきかの簡潔な理由" }
                                 },
-                                "Meta広告": {
-                                    type: "OBJECT",
-                                    properties: { "推奨興味関心カテゴリ": { type: "ARRAY", items: { type: "STRING" } } }
-                                },
-                                "TikTok広告": {
-                                    type: "OBJECT",
-                                    properties: {
-                                        "推奨ハッシュタグ": { type: "ARRAY", items: { type: "STRING" } },
-                                        "推奨興味関心カテゴリ": { type: "ARRAY", items: { type: "STRING" } }
-                                    }
-                                }
+                                required: ["platform_name", "strategic_reason"]
                             }
                         }
-                    }
+                    },
+                    required: ["overall_strategy", "primary_persona", "secondary_persona", "platform_strategy"]
                 }
             }
         };
@@ -1189,46 +1183,64 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let html = '<div class="bg-gray-50 border border-gray-200 rounded-lg p-6 space-y-6">';
-        html += '<h3 class="text-xl font-bold text-teal-800 text-center">AIが生成したターゲティング案</h3>';
+        let html = '<div class="bg-white border border-gray-200 rounded-lg p-6 space-y-8">';
+        html += '<h3 class="text-xl font-bold text-teal-800 text-center">AIによるターゲティング戦略レポート</h3>';
 
-        const renderItemList = (items, colorClass) => items && items.length > 0 ? `<div class="flex flex-wrap gap-2 mt-1">${items.map(item => `<span class="${colorClass} text-xs px-2 py-1 rounded">${item}</span>`).join('')}</div>` : '<p class="text-xs text-gray-500 mt-1">提案なし</p>';
+        // 1. 基本方針
+        if (data.overall_strategy) {
+            html += `
+                <div>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        キャンペーンの基本方針
+                    </h4>
+                    <p class="bg-teal-50 border-l-4 border-teal-500 text-teal-800 p-4 rounded-r-lg">${data.overall_strategy}</p>
+                </div>`;
+        }
         
-        if (data.recommended_platforms && data.recommended_platforms.length > 0) {
-            html += `<div><h4 class="text-lg font-semibold text-gray-800 mb-2 border-b pb-1">推奨する広告プラットフォーム</h4>${renderItemList(data.recommended_platforms, 'bg-teal-100 text-teal-800 font-medium')}</div>`;
-        }
+        // 2. ペルソナ
+        const renderPersona = (persona, title) => {
+            if (!persona) return '';
+            let personaHtml = `<div class="border border-gray-200 rounded-lg p-4 space-y-3">
+                                <h5 class="font-bold text-md text-gray-700">${title}</h5>
+                                <p class="bg-gray-100 p-3 rounded-md font-semibold text-gray-800">🎯 ${persona.profile || ''}</p>
+                                <div>
+                                    <h6 class="font-semibold text-sm text-gray-600">悩み・ニーズ</h6>
+                                    <ul class="list-disc list-inside text-sm text-gray-700 mt-1 pl-2 space-y-1">${(persona.pains_and_needs || []).map(item => `<li>${item}</li>`).join('')}</ul>
+                                </div>
+                                <div>
+                                    <h6 class="font-semibold text-sm text-gray-600">刺さる訴求キーワード</h6>
+                                    <div class="flex flex-wrap gap-2 mt-1">${(persona.appeal_keywords || []).map(item => `<span class="bg-yellow-200 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full">${item}</span>`).join('')}</div>
+                                </div>
+                               </div>`;
+            return personaHtml;
+        };
+        
+        html += `<div>
+                    <h4 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        推奨ターゲット
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        ${renderPersona(data.primary_persona, 'No.1 メインターゲット')}
+                        ${renderPersona(data.secondary_persona, 'No.2 サブターゲット')}
+                    </div>
+                 </div>`;
 
-        if (data.personas && data.personas.length > 0) {
-            html += '<div><h4 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">ターゲット顧客層のペルソナ</h4><div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
-            data.personas.forEach(persona => {
-                html += '<div class="bg-white p-4 rounded-lg border">';
-                html += `<h5 class="font-bold text-md text-teal-700">${persona.name || '無名のペルソナ'}</h5>`;
-                if(persona.details) {
-                    html += '<ul class="mt-2 space-y-1 text-sm text-gray-700">';
-                    for (const [key, value] of Object.entries(persona.details)) {
-                        html += `<li><strong class="font-medium">${key}:</strong> ${value || 'N/A'}</li>`;
-                    }
-                    html += '</ul>';
-                }
-                html += '</div>';
+        // 3. プラットフォーム戦略
+        if (data.platform_strategy && data.platform_strategy.length > 0) {
+            html += `<div>
+                        <h4 class="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-teal-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                           推奨プラットフォームと戦略
+                        </h4>
+                        <div class="space-y-4">`;
+            data.platform_strategy.forEach(platform => {
+                html += `<div class="bg-gray-50 p-4 rounded-lg border">
+                            <h5 class="font-bold text-md text-teal-700">${platform.platform_name || ''}</h5>
+                            <p class="text-sm text-gray-700 mt-1">${platform.strategic_reason || ''}</p>
+                         </div>`;
             });
-            html += '</div></div>';
-        }
-
-        if (data.targeting_examples) {
-            html += '<div><h4 class="text-lg font-semibold text-gray-800 mb-3 border-b pb-1">具体的なターゲティング設定の例</h4><div class="space-y-4">';
-            for (const [platform, examples] of Object.entries(data.targeting_examples)) {
-                 if (examples && Object.values(examples).some(v => v && v.length > 0)) {
-                    html += `<div class="bg-white p-4 rounded-lg border"><h5 class="font-bold text-md mb-2 text-gray-800">${platform}</h5><div class="space-y-3">`;
-                    for (const [key, values] of Object.entries(examples)) {
-                        html += `<div><p class="text-sm font-semibold text-teal-700">${key}:</p>`;
-                        const color = key.includes('除外') ? 'bg-red-200 text-red-900' : 'bg-gray-200 text-gray-800';
-                        html += renderItemList(values, color);
-                        html += '</div>';
-                    }
-                    html += '</div></div>';
-                }
-            }
             html += '</div></div>';
         }
 
